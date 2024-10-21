@@ -1,125 +1,81 @@
 import streamlit as st
 from gtts import gTTS
-import pyttsx3
 from googletrans import Translator
-import io
-import os
 
-# Initialize the translator
+# Initialize translator
 translator = Translator()
 
-# Function to translate text
-def translate_text(text, target_lang):
-    translated = translator.translate(text, dest=target_lang)
-    return translated.text
+# Function to translate and convert text to speech
+def translate_and_speak(text, target_language):
+    # Translate text to the selected language
+    translated_text = translator.translate(text, dest=target_language).text
+    
+    # Convert translated text to speech
+    tts = gTTS(text=translated_text, lang=target_language)
+    tts.save("translated_output.mp3")
+    return translated_text, "translated_output.mp3"
 
-# Function to convert text to speech using gTTS (Google Text-to-Speech)
-def convert_with_gtts(text, lang):
-    text_to_speech = gTTS(text=text, lang=lang, slow=False)
-    audio_stream = io.BytesIO()
-    text_to_speech.write_to_fp(audio_stream)
-    audio_stream.seek(0)  # Reset stream position to the beginning
-    return audio_stream
+# Streamlit App
+def main():
+    st.title("Text-to-Speech with Translation")
 
-# Function to convert text to speech using pyttsx3 (offline TTS)
-def convert_with_pyttsx3(text, lang, voice_choice):
-    text_to_speech = pyttsx3.init()
-    text_to_speech.setProperty('rate', 150)
-    voices = text_to_speech.getProperty('voices')
+    # Text input from the user
+    text_input = st.text_area("Enter text to convert to speech", "")
 
-    # Set voice based on user choice and language
-    if voice_choice == 'Female':
-        text_to_speech.setProperty('voice', voices[1].id)  # Female voice
-    else:
-        text_to_speech.setProperty('voice', voices[0].id)  # Male voice
+    # Language selection: International and Regional
+    category = st.selectbox("Select Language Category", ["International", "Regional"])
 
-    audio_stream = io.BytesIO()
-    text_to_speech.save_to_file(text, audio_stream)
-    text_to_speech.runAndWait()
-    audio_stream.seek(0)  # Reset stream position to the beginning
-    return audio_stream
+    # Dropdowns for international and regional languages
+    if category == "International":
+        language = st.selectbox("Select International Language", 
+                                ["English", "Spanish", "French", "German", "Italian"])
 
-# Language code mapping for gTTS
-lang_codes = {
-    "English": "en",
-    "Spanish": "es",
-    "French": "fr",
-    "German": "de",
-    "Hindi": "hi",
-    "Kannada": "kn",
-    "Bangla": "bn",
-    "Tamil": "ta",
-    "Gujarati": "gu",
-    "Malayalam": "ml",
-    "Telugu": "te"
-}
-
-# Reverse mapping for language codes to full names
-code_to_language = {v: k for k, v in lang_codes.items()}
-
-# Streamlit dashboard
-st.markdown("""
-    <style>
-    .title {
-        font-size: 32px;
-        font-weight: bold;
-    }
-    .subheader {
-        font-size: 16px;
-    }
-    .note {
-        font-size: 14px;
-        color: gray;
-        margin-top: 20px;
-    }
-    </style>
-    <div class="title">Multilingual Text to Speech Conversion</div>
-    <div class="subheader">by <a href="https://www.linkedin.com/in/ishan-sharma-8357731a0/" target="_blank">Ishan Sharma</a></div>
-    """, unsafe_allow_html=True)
-
-# User input
-user_text = st.text_input("Enter the text you want to convert to speech (in any language):")
-
-# Dropdown to choose the language category
-language_category = st.selectbox("Choose the language category:", ("International", "Regional"))
-
-# Language options based on selected category
-if language_category == "International":
-    language = st.selectbox("Choose the target language:", ("English", "Spanish", "French", "German"))
-elif language_category == "Regional":
-    language = st.selectbox("Choose the target language:", ("Hindi", "Kannada", "Bangla", "Tamil", "Gujarati", "Malayalam", "Telugu"))
-
-# Dropdown to choose the TTS engine
-tts_engine = st.selectbox("Choose the Text-to-Speech engine:", ("Channel 1", "Channel 2"))
-
-# Radio button to choose voice gender
-voice_choice = st.radio("Choose the voice gender:", ("Male", "Female"))
-
-# Convert button
-if st.button("Convert to Speech"):
-    if user_text:
-        # Detect the input language and translate to the selected target language
-        detected_lang_code = translator.detect(user_text).lang
-        detected_language = code_to_language.get(detected_lang_code, "Unknown Language")
-        translated_text = translate_text(user_text, lang_codes[language])
-
-        st.write(f"Detected Language: {detected_language}")
-        st.write(f"Translated Text ({language}): {translated_text}")
-
-        # Convert the translated text to speech
-        if tts_engine == "Channel 1":
-            audio_stream = convert_with_gtts(translated_text, lang_codes[language])
-        elif tts_engine == "Channel 2":
-            audio_stream = convert_with_pyttsx3(translated_text, lang_codes[language], voice_choice)
+        language_map = {
+            "English": "en",
+            "Spanish": "es",
+            "French": "fr",
+            "German": "de",
+            "Italian": "it"
+        }
         
-        # Play the audio stream
-        st.audio(audio_stream, format='audio/mp3')
-    else:
-        st.warning("Please enter some text before converting.")
+    elif category == "Regional":
+        language = st.selectbox("Select Regional Language", 
+                                ["Hindi", "Bengali", "Tamil", "Telugu", "Kannada", 
+                                 "Malayalam", "Marathi", "Gujarati", "Punjabi", "Urdu"])
 
-# Note for users
-st.markdown("""
-    <div class="note">
-    If you encounter issues with one channel, try switching to the other.
-    </div>
-    """, unsafe_allow_html=True)
+        language_map = {
+            "Hindi": "hi",
+            "Bengali": "bn",
+            "Tamil": "ta",
+            "Telugu": "te",
+            "Kannada": "kn",
+            "Malayalam": "ml",
+            "Marathi": "mr",
+            "Gujarati": "gu",
+            "Punjabi": "pa",
+            "Urdu": "ur"
+        }
+
+    if st.button("Translate and Convert to Speech"):
+        if text_input:
+            # Get the language code from the map
+            language_code = language_map[language]
+            
+            # Translate and generate speech
+            translated_text, audio_file = translate_and_speak(text_input, language_code)
+            
+            # Display translated text
+            st.write(f"Translated Text: {translated_text}")
+            
+            # Playing the translated speech in the app
+            audio_file_path = open(audio_file, 'rb')
+            audio_bytes = audio_file_path.read()
+            st.audio(audio_bytes, format='audio/mp3')
+
+            # Option to download the audio file
+            st.download_button("Download Speech", data=audio_bytes, file_name="speech.mp3")
+        else:
+            st.warning("Please enter text to convert.")
+
+if __name__ == "__main__":
+    main()
